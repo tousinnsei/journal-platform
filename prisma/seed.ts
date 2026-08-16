@@ -116,32 +116,39 @@ async function main() {
   console.log("Seeding database...");
 
   // 1. Users
-  const adminPassword = await bcrypt.hash("admin123456", 10);
-  const editorPassword = await bcrypt.hash("editor123456", 10);
+  if (process.env.NODE_ENV === "production" && !process.env.ADMIN_PASSWORD) {
+    throw new Error("ADMIN_PASSWORD is required when seeding in production");
+  }
+  const adminEmail = process.env.ADMIN_EMAIL || "admin@journal.org";
+  const adminPassword = process.env.ADMIN_PASSWORD || "admin123456";
+  const editorEmail = process.env.EDITOR_EMAIL || "editor@journal.org";
+  const editorPassword = process.env.EDITOR_PASSWORD || "editor123456";
+  const adminHash = await bcrypt.hash(adminPassword, 10);
+  const editorHash = await bcrypt.hash(editorPassword, 10);
 
   const admin = await prisma.user.upsert({
-    where: { email: "admin@journal.org" },
-    update: {},
+    where: { email: adminEmail },
+    update: process.env.ADMIN_PASSWORD ? { passwordHash: adminHash } : {},
     create: {
-      email: "admin@journal.org",
-      passwordHash: adminPassword,
+      email: adminEmail,
+      passwordHash: adminHash,
       name: "超级管理员",
       role: Role.SUPER_ADMIN,
     },
   });
 
   const editor = await prisma.user.upsert({
-    where: { email: "editor@journal.org" },
-    update: {},
+    where: { email: editorEmail },
+    update: process.env.EDITOR_PASSWORD ? { passwordHash: editorHash } : {},
     create: {
-      email: "editor@journal.org",
-      passwordHash: editorPassword,
+      email: editorEmail,
+      passwordHash: editorHash,
       name: "平台编辑",
       role: Role.EDITOR,
     },
   });
 
-  console.log(`Created users: ${admin.email}, ${editor.email}`);
+  console.log(`Ensured users: ${admin.email}, ${editor.email}`);
 
   // 2. Publishers
   const publishers = [

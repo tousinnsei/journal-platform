@@ -9,6 +9,11 @@
     "lint": "eslint",
     "db:migrate": "prisma migrate dev",
     "db:seed": "prisma db seed",
+    "db:deploy": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:status": "prisma migrate status",
+    "postinstall": "prisma generate",
+    "vercel-build": "prisma generate && prisma migrate deploy && next build",
     "test": "npx tsx scripts/test.ts"
   },
   "prisma": {

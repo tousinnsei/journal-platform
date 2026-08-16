@@ -362,12 +362,6 @@ CREATE TABLE "import_logs" (
 -- CreateIndex
 CREATE UNIQUE INDEX "users_email_key" ON "users"("email");
 
-鈹屸攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?鈹?
- Update available 6.19.3 -> 7.9.1                       鈹?鈹?                                                        鈹?鈹
-? This is a major update - please follow the guide at    鈹?鈹? https://pris.ly/d/major-version-upgrade                鈹?
-鈹?                                                        鈹?鈹? Run the following to update                            鈹
-?鈹?   npm i --save-dev prisma@latest                       鈹?鈹?   npm i @prisma/client@latest                          
-鈹?鈹斺攢鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹€鈹?
 -- CreateIndex
 CREATE UNIQUE INDEX "publishers_name_key" ON "publishers"("name");
 

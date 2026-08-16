@@ -6,8 +6,8 @@ import { BookOpen, Lock, Mail, ShieldAlert, ArrowRight } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
-  const [email, setEmail] = useState("admin@journal.org");
-  const [password, setPassword] = useState("admin123456");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -113,11 +113,6 @@ export default function AdminLoginPage() {
             )}
           </button>
         </form>
-
-        <div className="mt-6 pt-6 border-t border-slate-800/80 text-xs text-slate-500 text-center space-y-1">
-          <p>默认超级管理员: admin@journal.org / admin123456</p>
-          <p>默认编辑员: editor@journal.org / editor123456</p>
-        </div>
       </div>
     </div>
   );
