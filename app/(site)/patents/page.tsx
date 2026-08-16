@@ -1,0 +1,147 @@
+import Link from "next/link";
+import { db } from "@/lib/db";
+import { publicPatentInclude } from "@/lib/public-resource";
+import { formatPrice } from "@/lib/price";
+import { ResourceStatus } from "@prisma/client";
+import { Lightbulb, Search } from "lucide-react";
+
+export const dynamic = "force-dynamic";
+
+const typeLabel: Record<string, string> = {
+  INVENTION: "发明专利",
+  UTILITY_MODEL: "实用新型",
+  DESIGN: "外观设计",
+};
+
+export default async function PublicPatentsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const keyword = typeof sp.keyword === "string" ? sp.keyword.trim() : "";
+  const page = Math.max(1, parseInt(typeof sp.page === "string" ? sp.page : "1", 10) || 1);
+  const limit = 12;
+
+  const where = {
+    status: ResourceStatus.PUBLISHED,
+    ...(keyword
+      ? {
+          OR: [
+            { name: { contains: keyword } },
+            { description: { contains: keyword } },
+          ],
+        }
+      : {}),
+  };
+
+  const [list, total] = await Promise.all([
+    db.patent.findMany({
+      where,
+      include: publicPatentInclude,
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    db.patent.count({ where }),
+  ]);
+
+  const totalPages = Math.max(1, Math.ceil(total / limit));
+  const pageHref = (p: number) => {
+    const params = new URLSearchParams();
+    if (keyword) params.set("keyword", keyword);
+    params.set("page", String(p));
+    return `/patents?${params.toString()}`;
+  };
+
+  return (
+    <div className="space-y-8">
+      <div className="text-center space-y-2">
+        <h1 className="text-3xl font-bold text-white tracking-tight">专利服务</h1>
+        <p className="text-slate-400 text-sm">已发布的发明专利、实用新型与外观设计申请代办服务。</p>
+      </div>
+
+      <form method="get" action="/patents" className="flex items-center gap-2 max-w-md mx-auto">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500" />
+          <input
+            name="keyword"
+            defaultValue={keyword}
+            placeholder="搜专利名称 / 简介..."
+            className="w-full pl-9 px-3 py-2 rounded-xl bg-slate-900/60 border border-slate-800 text-sm text-slate-200 placeholder:text-slate-600 focus:outline-none focus:border-blue-500/60"
+          />
+        </div>
+        <button
+          type="submit"
+          className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors cursor-pointer"
+        >
+          搜索
+        </button>
+      </form>
+
+      {list.length === 0 ? (
+        <div className="p-12 text-center text-slate-500 text-sm bg-slate-900/50 border border-slate-800 rounded-2xl">
+          没有符合条件的专利，请调整搜索条件。
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {list.map((p) => (
+            <Link
+              key={p.id}
+              href={`/patents/${p.id}`}
+              className="group bg-slate-900/60 border border-slate-800 rounded-2xl p-5 space-y-3 hover:border-blue-500/50 transition-all"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <h2 className="font-semibold text-white group-hover:text-blue-400 transition-colors leading-snug">
+                  {p.name}
+                </h2>
+                <span className="shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold border bg-slate-950 text-slate-300 border-slate-800">
+                  {typeLabel[p.type] || p.type}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <Lightbulb className="w-3.5 h-3.5 text-slate-500" />
+                <span className="text-slate-400 line-clamp-1">{p.description || "暂无简介"}</span>
+              </div>
+              <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between">
+                <span className="text-xs text-slate-500">{p.createdBy?.name || "官方资源"}</span>
+                {p.minSalePrice != null ? (
+                  <span className="text-sm font-bold text-emerald-400">
+                    {formatPrice(p.minSalePrice, p.currency)}{" "}
+                    <span className="text-xs font-normal text-slate-400">{p.currency}</span>
+                  </span>
+                ) : (
+                  <span className="text-xs text-slate-500">暂无报价</span>
+                )}
+              </div>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 text-xs">
+          <Link
+            href={pageHref(Math.max(1, page - 1))}
+            className={`px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-slate-300 ${
+              page <= 1 ? "opacity-40 pointer-events-none" : "hover:border-blue-500/50"
+            }`}
+          >
+            上一页
+          </Link>
+          <span className="px-3 py-1.5 text-slate-400">
+            第 {page} / {totalPages} 页 · 共 {total} 条
+          </span>
+          <Link
+            href={pageHref(Math.min(totalPages, page + 1))}
+            className={`px-3 py-1.5 rounded-lg border border-slate-800 bg-slate-900/60 text-slate-300 ${
+              page >= totalPages ? "opacity-40 pointer-events-none" : "hover:border-blue-500/50"
+            }`}
+          >
+            下一页
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}

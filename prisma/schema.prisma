@@ -1,0 +1,416 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  SUPER_ADMIN
+  EDITOR
+  USER
+}
+
+enum JournalStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+enum JournalLevel {
+  ORDINARY
+  CORE
+}
+
+enum SourceStatus {
+  ACTIVE
+  DISABLED
+}
+
+enum CopyrightType {
+  URGENT
+  NORMAL
+}
+
+enum PatentType {
+  INVENTION
+  UTILITY_MODEL
+  DESIGN
+}
+
+enum ResourceStatus {
+  DRAFT
+  PENDING
+  PUBLISHED
+  REJECTED
+}
+
+model User {
+  id                    String                @id @default(uuid())
+  email                 String                @unique
+  passwordHash          String
+  name                  String
+  role                  Role                  @default(EDITOR)
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+  journals              Journal[]             @relation("CreatedJournals")
+  softwareCopyrights    SoftwareCopyright[]   @relation("CreatedSoftwareCopyrights")
+  patents               Patent[]              @relation("CreatedPatents")
+  trademarkServices     TrademarkService[]    @relation("CreatedTrademarkServices")
+  auditLogs             AuditLog[]
+  importLogs            ImportLog[]
+
+  @@map("users")
+}
+
+model Publisher {
+  id              String    @id @default(uuid())
+  name            String    @unique
+  slug            String    @unique
+  country         String?
+  officialWebsite String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  journals        Journal[]
+
+  @@map("publishers")
+}
+
+model Category {
+  id        String            @id @default(uuid())
+  name      String
+  slug      String            @unique
+  parentId  String?
+  sortOrder Int               @default(0)
+  parent    Category?         @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children  Category[]        @relation("CategoryHierarchy")
+  journals  JournalCategory[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@map("categories")
+}
+
+model Journal {
+  id                String            @id @default(uuid())
+  title             String
+  publisherId       String
+  publisher         Publisher         @relation(fields: [publisherId], references: [id])
+  description       String?
+  note              String?
+  officialWebsite   String?
+  level             JournalLevel      @default(ORDINARY)
+  status            JournalStatus     @default(DRAFT)
+  auditReason       String?
+  createdById       String?
+  createdBy         User?             @relation("CreatedJournals", fields: [createdById], references: [id])
+  publishedAt       DateTime?
+  minCostPrice      Int?
+  minSalePrice      Int?
+  currency          String            @default("CNY")
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  categories        JournalCategory[]
+  indexingDatabases JournalIndexing[]
+  formats           JournalFormatLink[]
+  indexes           JournalIndexLink[]
+  fields            JournalField[]
+  sources           JournalSource[]
+
+  @@unique([title, publisherId])
+  @@map("journals")
+}
+
+model JournalCategory {
+  journalId  String
+  categoryId String
+  journal    Journal  @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+
+  @@id([journalId, categoryId])
+  @@map("journal_categories")
+}
+
+model IndexingDatabase {
+  id        String            @id @default(uuid())
+  name      String            @unique
+  slug      String            @unique
+  sortOrder Int               @default(0)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  journals  JournalIndexing[]
+
+  @@map("indexing_databases")
+}
+
+model JournalFormat {
+  id        String               @id @default(uuid())
+  name      String               @unique
+  slug      String               @unique
+  sortOrder Int                  @default(0)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+  journals  JournalFormatLink[]
+
+  @@map("journal_formats")
+}
+
+model JournalIndex {
+  id        String              @id @default(uuid())
+  name      String              @unique
+  slug      String              @unique
+  sortOrder Int                 @default(0)
+  createdAt DateTime            @default(now())
+  updatedAt DateTime            @updatedAt
+  journals  JournalIndexLink[]
+
+  @@map("journal_indexes")
+}
+
+model Field {
+  id        String          @id @default(uuid())
+  name      String          @unique
+  slug      String          @unique
+  parentId  String?
+  parent    Field?          @relation("FieldHierarchy", fields: [parentId], references: [id])
+  children  Field[]         @relation("FieldHierarchy")
+  sortOrder Int             @default(0)
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  journals  JournalField[]
+
+  @@map("fields")
+}
+
+model JournalIndexing {
+  journalId  String
+  databaseId String
+  journal    Journal          @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  database   IndexingDatabase @relation(fields: [databaseId], references: [id], onDelete: Cascade)
+
+  @@id([journalId, databaseId])
+  @@map("journal_indexings")
+}
+
+model JournalFormatLink {
+  journalId String
+  formatId  String
+  journal   Journal       @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  format    JournalFormat @relation(fields: [formatId], references: [id], onDelete: Cascade)
+
+  @@id([journalId, formatId])
+  @@map("journal_format_links")
+}
+
+model JournalIndexLink {
+  journalId String
+  indexId   String
+  journal   Journal      @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  index     JournalIndex @relation(fields: [indexId], references: [id], onDelete: Cascade)
+
+  @@id([journalId, indexId])
+  @@map("journal_index_links")
+}
+
+model JournalField {
+  journalId String
+  fieldId   String
+  journal   Journal @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  field     Field   @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+
+  @@id([journalId, fieldId])
+  @@map("journal_fields")
+}
+
+model JournalSource {
+  id              String       @id @default(uuid())
+  journalId       String
+  journal         Journal      @relation(fields: [journalId], references: [id], onDelete: Cascade)
+  sourceType      String?
+  sourceName      String
+  contactName     String?
+  contactNickname String?
+  contactPhone    String?
+  contactWechat   String?
+  contactEmail    String?
+  contactNote     String?
+  costPrice       Int?
+  salePrice       Int
+  currency        String       @default("CNY")
+  status          SourceStatus @default(ACTIVE)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("journal_sources")
+}
+
+model SoftwareCopyright {
+  id               String                       @id @default(uuid())
+  name             String
+  shortName        String?
+  registrationNo   String?
+  copyrightOwner   String?
+  description      String?
+  note             String?
+  type             CopyrightType                @default(NORMAL)
+  status           ResourceStatus               @default(DRAFT)
+  auditReason      String?
+  createdById      String?
+  createdBy        User?                        @relation("CreatedSoftwareCopyrights", fields: [createdById], references: [id])
+  publishedAt      DateTime?
+  minCostPrice     Int?
+  minSalePrice     Int?
+  currency         String                       @default("CNY")
+  createdAt        DateTime                     @default(now())
+  updatedAt        DateTime                     @updatedAt
+  sources          SoftwareCopyrightSource[]
+
+  @@map("software_copyrights")
+}
+
+model SoftwareCopyrightSource {
+  id              String           @id @default(uuid())
+  copyrightId     String
+  copyright       SoftwareCopyright @relation(fields: [copyrightId], references: [id], onDelete: Cascade)
+  sourceType      String?
+  sourceName      String
+  contactName     String?
+  contactNickname String?
+  contactPhone    String?
+  contactWechat   String?
+  contactEmail    String?
+  contactNote     String?
+  costPrice       Int?
+  salePrice       Int
+  currency        String           @default("CNY")
+  status          SourceStatus     @default(ACTIVE)
+  sortOrder       Int              @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@map("software_copyright_sources")
+}
+
+model Patent {
+  id           String          @id @default(uuid())
+  name         String
+  description  String?
+  note         String?
+  type         PatentType      @default(INVENTION)
+  status       ResourceStatus  @default(DRAFT)
+  auditReason  String?
+  createdById  String?
+  createdBy    User?           @relation("CreatedPatents", fields: [createdById], references: [id])
+  publishedAt  DateTime?
+  minCostPrice Int?
+  minSalePrice Int?
+  currency     String          @default("CNY")
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+  sources      PatentSource[]
+
+  @@map("patents")
+}
+
+model PatentSource {
+  id              String       @id @default(uuid())
+  patentId        String
+  patent          Patent       @relation(fields: [patentId], references: [id], onDelete: Cascade)
+  sourceType      String?
+  sourceName      String
+  contactName     String?
+  contactNickname String?
+  contactPhone    String?
+  contactWechat   String?
+  contactEmail    String?
+  contactNote     String?
+  costPrice       Int?
+  salePrice       Int
+  currency        String       @default("CNY")
+  status          SourceStatus @default(ACTIVE)
+  sortOrder       Int          @default(0)
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+
+  @@map("patent_sources")
+}
+
+model TrademarkService {
+  id           String            @id @default(uuid())
+  name         String
+  description  String?
+  note         String?
+  status       ResourceStatus    @default(DRAFT)
+  auditReason  String?
+  createdById  String?
+  createdBy    User?             @relation("CreatedTrademarkServices", fields: [createdById], references: [id])
+  publishedAt  DateTime?
+  minCostPrice Int?
+  minSalePrice Int?
+  currency     String            @default("CNY")
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  sources      TrademarkSource[]
+
+  @@map("trademark_services")
+}
+
+model TrademarkSource {
+  id              String            @id @default(uuid())
+  serviceId       String
+  service         TrademarkService  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  times           Int               @default(1)
+  sourceType      String?
+  sourceName      String
+  contactName     String?
+  contactNickname String?
+  contactPhone    String?
+  contactWechat   String?
+  contactEmail    String?
+  contactNote     String?
+  costPrice       Int?
+  salePrice       Int
+  currency        String            @default("CNY")
+  status          SourceStatus      @default(ACTIVE)
+  sortOrder       Int               @default(0)
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  @@map("trademark_sources")
+}
+
+model AuditLog {
+  id           String   @id @default(uuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  action       String
+  targetEntity String
+  targetId     String
+  details      String?
+  createdAt    DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
+model ImportLog {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  module         String   @default("JOURNAL")
+  fileName       String
+  totalRows      Int
+  successRows    Int
+  newJournalCount Int
+  newSourceCount Int
+  mergedCount    Int
+  skippedCount   Int
+  errorCount     Int
+  details        String?
+  createdAt      DateTime @default(now())
+
+  @@map("import_logs")
+}
